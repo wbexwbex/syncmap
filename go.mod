@@ -1,4 +1,4 @@
-module github.com/a8m/syncmap
+module github.com/wbexwbex/syncmap
 
 go 1.18
 
