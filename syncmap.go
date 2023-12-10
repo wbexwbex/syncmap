@@ -168,7 +168,9 @@ func (g *Generator) Types() map[string]func(*ast.TypeSpec) {
 			g.replaceKey(t.Type)
 		},
 		"readOnly": func(t *ast.TypeSpec) { g.replaceKey(t) },
-		"entry":    func(*ast.TypeSpec) {},
+		"entry": func(t *ast.TypeSpec) {
+			g.replaceValue(t.Type)
+		},
 	}
 }
 
@@ -188,9 +190,29 @@ func (g *Generator) Funcs() map[string]func(*ast.FuncDecl) {
 		"Store": func(f *ast.FuncDecl) {
 			g.renameTuple(f.Type.Params)
 		},
+		"swapLocked": func(f *ast.FuncDecl) {
+			g.replaceValue(f.Type.Params)
+			g.replaceValue(f.Type.Results)
+		},
 		"LoadOrStore": func(f *ast.FuncDecl) {
 			g.renameTuple(f.Type.Params)
 			g.replaceValue(f.Type.Results)
+		},
+		"Swap": func(f *ast.FuncDecl) {
+			g.renameTuple(f.Type.Params)
+			g.replaceValue(f.Type.Results)
+			renameNil(f.Body, f.Type.Results.List[0].Names[0].Name)
+		},
+		"CompareAndSwap": func(f *ast.FuncDecl) {
+			g.renameKeyTupleValue(f.Type.Params)
+		},
+		"CompareAndDelete": func(f *ast.FuncDecl) {
+			g.renameTuple(f.Type.Params)
+			g.replaceValue(f.Type.Results)
+		},
+		"tryCompareAndSwap": func(f *ast.FuncDecl) {
+			//g.renameTuple(f.Type.Params)
+			g.replaceValue(f.Type.Params)
 		},
 		"LoadAndDelete": func(f *ast.FuncDecl) {
 			g.replaceKey(f.Type.Params)
@@ -204,18 +226,26 @@ func (g *Generator) Funcs() map[string]func(*ast.FuncDecl) {
 		"Range": func(f *ast.FuncDecl) {
 			g.renameTuple(f.Type.Params.List[0].Type.(*ast.FuncType).Params)
 		},
-		"Delete":      func(f *ast.FuncDecl) { g.replaceKey(f) },
-		"newEntry":    func(f *ast.FuncDecl) { g.replaceValue(f) },
-		"tryStore":    func(f *ast.FuncDecl) { g.replaceValue(f) },
+		"Delete": func(f *ast.FuncDecl) { g.replaceKey(f) },
+		"newEntry": func(f *ast.FuncDecl) {
+			g.replaceValue(f)
+			//g.replaceKey(f)
+		},
+		//"tryStore":    func(f *ast.FuncDecl) { g.replaceValue(f) },
 		"dirtyLocked": func(f *ast.FuncDecl) { g.replaceKey(f) },
-		"storeLocked": func(f *ast.FuncDecl) { g.replaceValue(f) },
+		//"storeLocked": func(f *ast.FuncDecl) { g.replaceValue(f) },
 		"delete": func(f *ast.FuncDecl) {
 			g.replaceValue(f)
 			renameNil(f.Body, f.Type.Results.List[0].Names[0].Name)
 		},
+		"trySwap": func(f *ast.FuncDecl) {
+			g.replaceValue(f)
+			//renameNil(f.Body, f.Type.Results.List[0].Names[0].Name)
+		},
 		"missLocked":       nop,
 		"unexpungeLocked":  nop,
 		"tryExpungeLocked": nop,
+		"loadReadOnly":     nop,
 	}
 }
 
@@ -232,6 +262,20 @@ func (g *Generator) renameTuple(l *ast.FieldList) {
 	}
 	l.List = append(l.List, &ast.Field{
 		Names: []*ast.Ident{l.List[0].Names[1]},
+		Type:  l.List[0].Type,
+	})
+	l.List[0].Names = l.List[0].Names[:1]
+	g.replaceKey(l.List[0])
+	g.replaceValue(l.List[1])
+}
+
+func (g *Generator) renameKeyTupleValue(l *ast.FieldList) {
+	if g.key == g.value {
+		g.replaceKey(l.List[0])
+		return
+	}
+	l.List = append(l.List, &ast.Field{
+		Names: []*ast.Ident{l.List[0].Names[1], l.List[0].Names[2]},
 		Type:  l.List[0].Type,
 	})
 	l.List[0].Names = l.List[0].Names[:1]
