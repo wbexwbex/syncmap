@@ -246,6 +246,7 @@ func (g *Generator) Funcs() map[string]func(*ast.FuncDecl) {
 		"unexpungeLocked":  nop,
 		"tryExpungeLocked": nop,
 		"loadReadOnly":     nop,
+		"Clear":            nop,
 	}
 }
 
